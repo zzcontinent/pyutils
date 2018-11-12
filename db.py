@@ -12,7 +12,7 @@ class CDB:
                  port,
                  db_name,
                  charset='utf8',
-                 echo=True
+                 echo=False
                  ):
         self.conn_name = conn_name
         self.user = user
@@ -22,7 +22,8 @@ class CDB:
         self.db_name = db_name
         self.charset = charset
         self.echo = echo
-        self.engine = None
+        self.engine = ''
+        self.create_engine()
 
     def __del__(self):
         self.close_engine()
@@ -50,14 +51,12 @@ class CDB_MySQL(CDB):
                  port,
                  db_name,
                  charset='utf8',
-                 echo=True,
+                 echo=False,
                  ssh_need=False,
                  ssh_user=None,
                  ssh_host=None,
                  ssh_port=None,
                  ssh_passwd=None):
-        CDB.__init__(self, conn_name=conn_name, user=user, passwd=passwd, host=host, port=port, db_name=db_name,
-                     charset=charset, echo=echo)
         # ssh tunnel needed?
         self.ssh_need = ssh_need
         self.ssh_user = ssh_user
@@ -65,6 +64,8 @@ class CDB_MySQL(CDB):
         self.ssh_port = ssh_port
         self.ssh_passwd = ssh_passwd
         self.ssh_server = None
+        CDB.__init__(self, conn_name=conn_name, user=user, passwd=passwd, host=host, port=port, db_name=db_name,
+                     charset=charset, echo=echo)
 
     def create_engine(self):
         if self.engine:
@@ -101,8 +102,7 @@ class CDB_MySQL(CDB):
             self.ssh_server.stop()
 
     def __close_conn(self):
-        if self.engine:
-            del (self.engine)
+        pass
 
     def close_engine(self):
         self.__close_tunnel()
@@ -114,7 +114,6 @@ if __name__ == '__main__':
         x = CDB_MySQL(conn_name='localtest', user='root', passwd='520020', host='localhost', port=3306,
                       db_name='scrapy', ssh_need=True, ssh_host='192.168.165.28', ssh_user='pi', ssh_port=22,
                       ssh_passwd='zzz520020')
-        x.create_engine()
         out = x.get_engine().execute('select * from city limit 10')
         for v in out:
             print v
