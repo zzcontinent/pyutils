@@ -1,18 +1,18 @@
 # -*- coding: utf-8 -*-
 
-from db import CDB_MySQL
+from db import CDB_MySQL, CDB_PG
 import pandas as pd
 from enc_dec import dec, key
 
-db_metadata = CDB_MySQL(conn_name='metadata', user='data_reader', passwd=dec('153db8e6e550d3a93b34547c83d19643', key),
-                        host='192.168.10.29',
-                        port=3306,
-                        db_name='metadata')
-
-# db_metadata = CDB_MySQL(conn_name='metadata', user='root', passwd=dec('b2be9c5d296a1a52', key),
-#                         host='localhost',
+# db_metadata = CDB_MySQL(conn_name='metadata', user='data_reader', passwd=dec('153db8e6e550d3a93b34547c83d196433', key),
+#                         host='192.168.10.29',
 #                         port=3306,
 #                         db_name='metadata')
+
+db_metadata = CDB_MySQL(conn_name='metadata', user='root', passwd=dec('b2be9c5d296a1a52', key),
+                        host='localhost',
+                        port=3306,
+                        db_name='metadata')
 
 
 class CDBMetadata:
@@ -29,7 +29,7 @@ class CDBMetadata:
         df = pd.read_sql(sql=sql, con=self.db_metadata_engine)
         self.df_metadata = df
 
-    def create_conn(self, conn_name):
+    def create_conn(self, conn_name, db_type='mysql'):
         self.__select_metadata()
         df_select = self.df_metadata[self.df_metadata['conn_name'] == conn_name]
         if df_select is None:
@@ -53,29 +53,59 @@ class CDBMetadata:
             else:
                 print 'conn: {0} newly created'.format(conn_name)
             if conn_type == 0 and ssh_sts == 0:
-                self.conn[conn_name] = CDB_MySQL(conn_name=conn_name, user=user, passwd=passwd, host=host, port=port,
-                                                 db_name=db_name,
-                                                 charset=charset, echo=False)
+                if db_type == 'mysql':
+                    self.conn[conn_name] = CDB_MySQL(conn_name=conn_name, user=user, passwd=passwd, host=host,
+                                                     port=port,
+                                                     db_name=db_name,
+                                                     charset=charset, echo=False)
+                elif db_type == 'pg':
+                    self.conn[conn_name] = CDB_PG(conn_name=conn_name, user=user, passwd=passwd, host=host,
+                                                  port=port,
+                                                  db_name=db_name,
+                                                  charset=charset, echo=False)
+                else:
+                    print 'db_type must be mysql or pg'
+                    return None
                 return self.conn[conn_name].get_engine()
             elif conn_type == 0 and ssh_sts == 1:
                 # 默认只ssh跳一次
                 df_ssh = self.df_metadata[self.df_metadata['db_config_id'] == ssh_sk]
                 for ii, rowSSh in df_ssh.iterrows():
-                    self.conn[conn_name] = CDB_MySQL(
-                        conn_name=conn_name,
-                        user=user,
-                        passwd=passwd,
-                        host=host,
-                        port=port,
-                        db_name=db_name,
-                        charset=charset,
-                        echo=False,
-                        ssh_need=True,
-                        ssh_user=rowSSh['user'],
-                        ssh_host=rowSSh['host'],
-                        ssh_passwd=dec(rowSSh['passwd'], key),
-                        ssh_port=int(rowSSh['port'])
-                    )
+                    if db_type == 'mysql':
+                        self.conn[conn_name] = CDB_MySQL(
+                            conn_name=conn_name,
+                            user=user,
+                            passwd=passwd,
+                            host=host,
+                            port=port,
+                            db_name=db_name,
+                            charset=charset,
+                            echo=False,
+                            ssh_need=True,
+                            ssh_user=rowSSh['user'],
+                            ssh_host=rowSSh['host'],
+                            ssh_passwd=dec(rowSSh['passwd'], key),
+                            ssh_port=int(rowSSh['port'])
+                        )
+                    elif db_type == 'pg':
+                        self.conn[conn_name] = CDB_PG(
+                            conn_name=conn_name,
+                            user=user,
+                            passwd=passwd,
+                            host=host,
+                            port=port,
+                            db_name=db_name,
+                            charset=charset,
+                            echo=False,
+                            ssh_need=True,
+                            ssh_user=rowSSh['user'],
+                            ssh_host=rowSSh['host'],
+                            ssh_passwd=dec(rowSSh['passwd'], key),
+                            ssh_port=int(rowSSh['port'])
+                        )
+                    else:
+                        print 'db_type must be mysql or pg'
+                        return None
                     return self.conn[conn_name].get_engine()
 
     def close_conn(self, conn_name=None):
